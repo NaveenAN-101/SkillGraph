@@ -96,6 +96,6 @@ Open `index.html` in a browser (or serve it with your preferred static server).
 
 ## Team
 
-- Member 1: Backend + Graph + APIs
-- Member 2: Frontend + Report
+- Member 1 - A Naveen : Backend + Graph + APIs
+- Member 2 - Arnav Dharmendra : Frontend + Report
 
