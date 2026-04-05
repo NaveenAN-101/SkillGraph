@@ -25,6 +25,7 @@ SkillGraph is a skill intelligence platform that helps learners and professional
 
 ```text
 SkillGraph/
+  .env.example
   main.py
   db.py
   index.html
@@ -38,6 +39,7 @@ SkillGraph/
 
 - Python 3.10+
 - Neo4j running locally (or remotely)
+- WSL installed (recommended for `start_app.bat` flow)
 
 ### 2) Install dependencies
 
@@ -53,21 +55,42 @@ Update Neo4j connection values in `db.py`:
 - `USERNAME`
 - `PASSWORD`
 
-### 4) Run backend
+### 4) Configure launcher (optional but recommended)
 
-```bash
-uvicorn main:app --host 0.0.0.0 --port 8000 --reload
-```
+1. Copy `.env.example` to `.env`
+2. Edit values only if needed
 
-or use:
+Important fields:
+- `WSL_PROJECT_PATH` (leave blank for auto-detect)
+- `API_PORT`
+- `FRONTEND_PORT`
+- `INDEX_FILE`
+- `ENABLE_NEO4J_START`
+
+`.env` is machine-specific and is ignored by git.
+
+### 5) Run application
 
 ```bash
 start_app.bat
 ```
 
-### 5) Open frontend
+This starts:
+- Neo4j in WSL (if enabled)
+- FastAPI backend in WSL
+- Frontend static server in Windows
+- Browser at `http://localhost:5500/index.html` (default)
 
-Open `index.html` in a browser (or serve it with your preferred static server).
+Manual backend run (alternative):
+
+```bash
+uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+```
+
+### 6) Open frontend (manual mode)
+
+If not using `start_app.bat`, serve frontend and open:
+- `http://localhost:5500/index.html`
 
 ## Key API Endpoints
 
@@ -81,6 +104,22 @@ Open `index.html` in a browser (or serve it with your preferred static server).
 - `POST /market/sync`
 - `GET /market/intelligence`
 - `GET /market/intelligence/{user_id}`
+
+## Market Intelligence (Free Sources)
+
+Market sync uses free/public sources with fallback support.
+
+Example sync modes:
+- All sources: `POST /market/sync?source=all&max_posts=220&allow_fallback=true`
+- Remotive only: `POST /market/sync?source=remotive`
+- Arbeitnow only: `POST /market/sync?source=arbeitnow`
+- Offline fallback only: `POST /market/sync?source=fallback`
+
+The UI supports:
+- source selector
+- max posts
+- sync status + source errors
+- trend confidence and source breakdown
 
 ## Dataset & Model Notes
 
@@ -98,4 +137,3 @@ Open `index.html` in a browser (or serve it with your preferred static server).
 
 - Member 1 - A Naveen : Backend + Graph + APIs
 - Member 2 - Arnav Dharmendra : Frontend + Report
-
