@@ -1,0 +1,2217 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>SkillGraph</title>
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<style>
+:root {
+  --bg: #f4f4f4;
+  --bg-pattern-a: #efefef;
+  --bg-pattern-b: #f9f9f9;
+  --text: #111111;
+  --muted-text: #4a4a4a;
+  --panel: #ffffff;
+  --panel-soft: #fafafa;
+  --border: #d5d5d5;
+  --shadow: rgba(0, 0, 0, 0.08);
+  --accent: #111111;
+  --accent-contrast: #ffffff;
+  --button-hover: #2a2a2a;
+  --progress-track: #e2e2e2;
+  --progress-fill: #111111;
+  --overlay: rgba(0, 0, 0, 0.45);
+  --toast-success: #111111;
+  --toast-error: #2a2a2a;
+  --graph-bg: #ffffff;
+}
+
+body.dark-theme {
+  --bg: #0d0d0d;
+  --bg-pattern-a: #151515;
+  --bg-pattern-b: #101010;
+  --text: #f2f2f2;
+  --muted-text: #cecece;
+  --panel: #171717;
+  --panel-soft: #202020;
+  --border: #303030;
+  --shadow: rgba(0, 0, 0, 0.4);
+  --accent: #f2f2f2;
+  --accent-contrast: #111111;
+  --button-hover: #d9d9d9;
+  --progress-track: #2b2b2b;
+  --progress-fill: #f2f2f2;
+  --overlay: rgba(0, 0, 0, 0.65);
+  --toast-success: #f2f2f2;
+  --toast-error: #d9d9d9;
+  --graph-bg: #131313;
+}
+
+body {
+  font-family: "Segoe UI", Arial, sans-serif;
+  margin: 0;
+  padding: 0;
+  background:
+    radial-gradient(circle at top right, var(--bg-pattern-a), transparent 45%),
+    linear-gradient(140deg, var(--bg), var(--bg-pattern-b));
+  color: var(--text);
+  transition: background 0.3s ease, color 0.3s ease;
+}
+
+.container {
+  max-width: 1100px;
+  width: calc(100% - 40px);
+  margin: 40px auto;
+}
+
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 25px;
+  gap: 16px;
+}
+
+h1 {
+  margin: 0;
+  color: var(--text);
+  letter-spacing: 0.4px;
+  font-weight: 700;
+}
+
+.section {
+  background: var(--panel);
+  padding: 30px;
+  border-radius: 14px;
+  margin-bottom: 40px;
+  border: 1px solid var(--border);
+  box-shadow: 0 10px 25px var(--shadow);
+  transition: background 0.3s ease, border-color 0.3s ease;
+}
+
+.section h2 {
+  margin-top: 0;
+  margin-bottom: 20px;
+  color: var(--text);
+  border-bottom: 2px solid var(--border);
+  padding-bottom: 10px;
+}
+
+h3 {
+  color: var(--text);
+}
+
+input, select, button {
+  padding: 10px;
+  margin: 5px 5px 15px 0;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  font-size: 14px;
+}
+
+input, select {
+  width: 240px;
+  background: var(--panel);
+  color: var(--text);
+}
+
+button {
+  background: var(--accent);
+  color: var(--accent-contrast);
+  cursor: pointer;
+  border: 1px solid var(--accent);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease, color 0.2s ease;
+  padding: 10px 16px;
+  border-radius: 8px;
+}
+
+button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px var(--shadow);
+  background: var(--button-hover);
+}
+
+button.loading {
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+.danger-btn {
+  background: var(--muted-text);
+  border-color: var(--muted-text);
+}
+
+.danger-btn:hover {
+  background: var(--text);
+}
+
+.card {
+  background: var(--panel-soft);
+  padding: 18px;
+  border-radius: 12px;
+  margin-bottom: 12px;
+  border: 1px solid var(--border);
+  box-shadow: 0 6px 20px var(--shadow);
+  transition: transform 0.2s ease, background 0.3s ease;
+}
+
+.card:hover {
+  transform: translateY(-3px);
+}
+
+.progress-container {
+  background: var(--progress-track);
+  border-radius: 20px;
+  overflow: hidden;
+  height: 20px;
+  margin-top: 10px;
+}
+
+.progress-bar {
+  height: 20px;
+  background: var(--progress-fill);
+  width: 0%;
+  transition: width 0.4s ease;
+}
+
+.toast {
+  position: fixed;
+  top: -80px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 14px 25px;
+  border-radius: 8px;
+  color: var(--accent-contrast);
+  font-weight: bold;
+  transition: top 0.4s ease;
+  z-index: 9999;
+}
+
+.toast.show {
+  top: 20px;
+}
+
+#modalOverlay {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: var(--overlay);
+  z-index: 9998;
+}
+
+#modalBox {
+  background: var(--panel);
+  width: 400px;
+  margin: 200px auto;
+  padding: 25px;
+  border-radius: 10px;
+  text-align: center;
+  border: 1px solid var(--border);
+}
+
+.accordion-btn {
+  width: 100%;
+  text-align: left;
+  padding: 12px;
+  background: var(--panel-soft);
+  cursor: pointer;
+  margin-top: 10px;
+  font-weight: bold;
+  border-radius: 8px;
+  color: var(--text);
+}
+
+.accordion-btn:hover {
+  background: var(--border);
+}
+
+.accordion-content {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.35s ease;
+  background: var(--panel-soft);
+  border-radius: 8px;
+  padding-left: 10px;
+  position: relative;
+}
+
+.accordion-content.active {
+  max-height: 1200px;
+  padding-top: 15px;
+  overflow: visible;
+}
+
+.accordion-content h4 {
+  color: var(--text);
+  margin-bottom: 10px;
+}
+
+.accordion-content hr {
+  border: none;
+  height: 1px;
+  background: var(--border);
+}
+
+button:disabled {
+  background: #888888;
+  border-color: #888888;
+  color: #e6e6e6;
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+#graph {
+  width: 100%;
+  height: 500px;
+  background: var(--graph-bg);
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  transition: background 0.3s ease, border-color 0.3s ease;
+}
+
+#themeToggle {
+  min-width: 160px;
+}
+
+#userDisplay {
+  margin-top: 10px;
+  font-weight: bold;
+  color: var(--text);
+}
+
+.grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+.pill {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  font-size: 12px;
+  margin-right: 6px;
+}
+
+.muted {
+  color: var(--muted-text);
+}
+
+@media (max-width: 900px) {
+  .topbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  #themeToggle {
+    width: 100%;
+  }
+  .grid-2 {
+    grid-template-columns: 1fr;
+  }
+}
+
+</style>
+</head>
+
+<body>
+
+<div id="toast" class="toast"></div>
+
+<div id="modalOverlay">
+  <div id="modalBox">
+    <h3 id="modalMessage"></h3>
+    <button onclick="confirmAction()" style="margin-right:10px;">Confirm</button>
+    <button onclick="closeModal()" class="danger-btn">Cancel</button>
+  </div>
+</div>
+
+<div class="container">
+<div class="topbar">
+<h1>SkillGraph Platform</h1>
+<button id="themeToggle" onclick="toggleTheme()">Switch to Dark Mode</button>
+</div>
+
+<!-- Dashboard -->
+<div class="section">
+<h2>📊 Analytics Dashboard</h2>
+
+<input id="user" placeholder="User ID (e.g. u1)">
+<select id="jobSelect"></select>
+<button onclick="analyze()">Analyze</button>
+<div id="userDisplay"></div>
+
+<h3>Learning Path</h3>
+<div id="learningPath"></div>
+
+<h3>Skill Gap</h3>
+<div id="skillGap"></div>
+
+<div class="progress-container">
+<div id="progressBar" class="progress-bar"></div>
+</div>
+<div id="progressLabel"></div>
+
+<h3>Course Recommendations</h3>
+<div id="courses"></div>
+</div>
+
+
+
+<h3 id="graphSection">Graph View</h3>
+<div id="graph"></div>
+<div id="nodeInfo" class="section" style="display:none; margin-top:20px;">
+<h3>Node Details</h3>
+<div id="nodeDetails"></div>
+</div>
+
+<h3>🔄 Career Switch Recommendations</h3>
+
+<button onclick="recommendCareers()">Find Jobs I Can Switch To</button>
+
+<div id="careerRecommendations"></div>
+
+<h3>🔄 Career Switch Advisor</h3>
+
+<button onclick="careerAdvisor()">Find Career Paths</button>
+
+<div id="careerResults"></div>
+
+<div class="section">
+<h2>Skill Copilot</h2>
+<div class="grid-2">
+  <div>
+    <input id="aiUserId" placeholder="User ID (e.g. u1)">
+    <select id="aiTargetJob"></select>
+    <input id="aiWeeks" type="number" value="12" min="4" max="24" placeholder="Weeks (4-24)">
+    <input id="aiHours" type="number" value="6" min="1" max="30" placeholder="Hours / week">
+    <br>
+    <button onclick="generateAIRoadmap()">Generate Roadmap</button>
+  </div>
+  <div id="aiRoadmapOverview" class="card muted">Generate a roadmap to see personalized milestones.</div>
+</div>
+<div id="aiRoadmapList" style="margin-top:12px;"></div>
+</div>
+
+<div class="section">
+<h2>Live Market Intelligence</h2>
+<select id="marketSource">
+  <option value="all">All Free Sources</option>
+  <option value="remotive">Remotive Only</option>
+  <option value="arbeitnow">Arbeitnow Only</option>
+  <option value="fallback">Offline Fallback Only</option>
+</select>
+<input id="marketMaxPosts" type="number" value="220" min="10" max="500" placeholder="Max posts">
+<button onclick="syncMarketIntelligence()">Sync Market Feed</button>
+<button onclick="loadMarketIntelligence()">Refresh Trends</button>
+<button onclick="analyzeUserMarketFit()">Analyze My Market Fit</button>
+<div id="marketSyncStatus" class="muted" style="margin: 8px 0 14px;"></div>
+<div id="marketMeta"></div>
+<div class="grid-2">
+  <div>
+    <h3>Trending Skills</h3>
+    <div id="marketTrends"></div>
+  </div>
+  <div>
+    <h3>User Market Fit</h3>
+    <div id="marketUserFit"></div>
+  </div>
+</div>
+</div>
+
+<!-- Admin -->
+<div class="section">
+<h2>⚙️ Admin Panel</h2>
+
+<!-- Create User -->
+<button class="accordion-btn" onclick="toggleAccordion(this)">
+Create User
+</button>
+<div class="accordion-content">
+  <h4>Create User</h4>
+  
+  <input id="newUserId" placeholder="User ID" oninput="validateUserForm()">
+  <input id="newUserName" placeholder="Name" oninput="validateUserForm()">
+  <select id="newUserLevel" onchange="validateUserForm()">
+    <option>Beginner</option>
+    <option>Intermediate</option>
+    <option>Advanced</option>
+  </select>
+
+  <br>
+  <button id="createUserBtn" onclick="createUser(this)" disabled>Create</button>
+
+  <hr style="margin:20px 0;">
+
+  <h4>Delete User</h4>
+
+  <select id="deleteUserSelect"></select>
+  <br>
+  <button onclick="deleteUser()" class="danger-btn">Delete</button>
+
+</div>
+
+<!-- Create Skill -->
+<button class="accordion-btn" onclick="toggleAccordion(this)">
+Create Skill
+</button>
+<div class="accordion-content">
+
+  <h4>Create Skill</h4>
+
+  <input id="newSkillName" placeholder="Skill Name" oninput="validateSkillForm()">
+  <input id="newSkillCategory" placeholder="Category" oninput="validateSkillForm()">
+  <select id="newSkillLevel" onchange="validateSkillForm()">
+    <option>Beginner</option>
+    <option>Intermediate</option>
+    <option>Advanced</option>
+  </select>
+
+  <br>
+  <button id="createSkillBtn" onclick="createSkill(this)" disabled>Create</button>
+
+  <hr style="margin:20px 0;">
+
+  <h4>Delete Skill</h4>
+
+  <select id="deleteSkillSelect"></select>
+  <br>
+  <button onclick="deleteSkill()" class="danger-btn">Delete</button>
+
+</div>
+
+<!-- Create Job -->
+<button class="accordion-btn" onclick="toggleAccordion(this)">
+Create Job Role
+</button>
+<div class="accordion-content">
+
+  <h4>Create Job Role</h4>
+
+  <input id="newJobTitle" placeholder="Job Title" oninput="validateJobForm()">
+  <input id="newJobDomain" placeholder="Domain" oninput="validateJobForm()">
+
+  <select id="newJobLevel" onchange="validateJobForm()">
+    <option value="">Select Level</option>
+    <option>Entry</option>
+    <option>Mid</option>
+    <option>Senior</option>
+  </select>
+  <br>
+  <button id="createJobBtn" onclick="createJob(this)" disabled>Create</button>
+
+  <hr style="margin:20px 0;">
+
+  <h4>Delete Job Role</h4>
+
+  <select id="deleteJobSelect"></select>
+  <br>
+  <button onclick="deleteJob()" class="danger-btn">Delete</button>
+
+</div>
+
+<!-- Create Course -->
+<button class="accordion-btn" onclick="toggleAccordion(this)">
+Create Course
+</button>
+<div class="accordion-content">
+
+  <h4 style="margin-top:10px;">Create Course</h4>
+
+  <input id="newCourseName" oninput="validateCourseForm()" placeholder="Course Name">
+  <input id="newCoursePlatform" oninput="validateCourseForm()" placeholder="Platform">
+  <input id="newCourseDifficulty" oninput="validateCourseForm()" placeholder="Difficulty">
+  <select id="newCourseSkill"></select>
+  <input id="newCourseDuration" type="number" oninput="validateCourseForm()" placeholder="Duration (hours)">
+
+  <br>
+  <button id="createCourseBtn" onclick="createCourse(this)" disabled>Create</button>
+  <hr style="margin:20px 0;">
+
+  <h4>Delete Course</h4>
+
+  <select id="deleteCourseSelect"></select>
+  <br>
+  <button onclick="deleteCourse()" class="danger-btn">Delete</button>
+
+</div>
+
+<button class="accordion-btn" onclick="toggleAccordion(this)">
+Manage Skill Prerequisites
+</button>
+
+<div class="accordion-content">
+
+  <h4>Add Prerequisite</h4>
+  <select id="prereqSkillSelect"></select>
+  →
+  <select id="targetSkillSelect"></select>
+  <br>
+  <button onclick="addPrerequisite()">Add</button>
+
+  <hr style="margin:20px 0;">
+
+  <h4>Remove Prerequisite</h4>
+  <select id="removePrereqSelect"></select>
+  →
+  <select id="removeTargetSelect"></select>
+  <br>
+  <button onclick="removePrerequisite()" class="danger-btn">Remove</button>
+
+</div>
+
+
+<!-- Assign Skill to User -->
+<button class="accordion-btn" onclick="toggleAccordion(this)">Assign Skill to User</button>
+<div class="accordion-content">
+<input id="assignUserId" placeholder="User ID">
+<input id="assignSkillName" placeholder="Skill Name">
+<input id="assignProficiency" type="number" placeholder="Proficiency (1-5)">
+<button onclick="assignSkillToUser(this)">Assign</button>
+</div>
+
+<!-- Assign Skill to Job -->
+<button class="accordion-btn" onclick="toggleAccordion(this)">
+Manage Job Requirements
+</button>
+
+<div class="accordion-content">
+
+  <h4>Add Skill to Job</h4>
+  <select id="jobSelectRel"></select>
+  →
+  <select id="jobSkillSelect"></select>
+  <br>
+  <button onclick="addSkillToJob()">Add</button>
+
+  <hr style="margin:20px 0;">
+
+  <h4>Remove Skill from Job</h4>
+  <select id="removeJobSelect"></select>
+  →
+  <select id="removeJobSkillSelect"></select>
+  <br>
+  <button onclick="removeSkillFromJob()" class="danger-btn">Remove</button>
+
+</div>
+
+
+</div>
+</div>
+
+<script>
+
+const API = "http://localhost:8000";
+let modalCallback = null;
+let latestGraphState = { type: null, job: null, nodes: null, links: null };
+
+function getCssVar(name){
+  return getComputedStyle(document.body).getPropertyValue(name).trim();
+}
+
+function initTheme(){
+  const saved = localStorage.getItem("skillgraphTheme");
+  const isDark = saved === "dark";
+  document.body.classList.toggle("dark-theme", isDark);
+  updateThemeButtonText(isDark);
+}
+
+function updateThemeButtonText(isDark){
+  const toggle = document.getElementById("themeToggle");
+  if(toggle){
+    toggle.innerText = isDark ? "Switch to Light Mode" : "Switch to Dark Mode";
+  }
+}
+
+function rerenderActiveGraph(){
+  if(latestGraphState.type === "career" && latestGraphState.nodes && latestGraphState.links){
+    const nodes = JSON.parse(JSON.stringify(latestGraphState.nodes));
+    const links = JSON.parse(JSON.stringify(latestGraphState.links));
+    renderCustomGraph(nodes, links);
+    return;
+  }
+
+  if(latestGraphState.type === "job" && latestGraphState.job){
+    renderGraph(latestGraphState.job);
+  }
+}
+
+function toggleTheme(){
+  const darkEnabled = document.body.classList.toggle("dark-theme");
+  localStorage.setItem("skillgraphTheme", darkEnabled ? "dark" : "light");
+  updateThemeButtonText(darkEnabled);
+  rerenderActiveGraph();
+}
+
+function getGraphPalette(){
+  const dark = document.body.classList.contains("dark-theme");
+  return dark
+    ? {
+        job: "#f2f2f2",
+        skill: "#d6d6d6",
+        prereq: "#b8b8b8",
+        course: "#9a9a9a",
+        user: "#f2f2f2",
+        missing: "#8c8c8c",
+        link: "#646464",
+        label: "#111111",
+        labelStroke: "#f2f2f2",
+        nodeStroke: "#f2f2f2",
+        nodeStrokeWidth: 1.8,
+        linkOpacity: 0.85,
+        infoFill: "#1f1f1f",
+        infoStroke: "#f2f2f2",
+        infoText: "#f2f2f2"
+      }
+    : {
+        job: "#111111",
+        skill: "#2f2f2f",
+        prereq: "#4a4a4a",
+        course: "#666666",
+        user: "#111111",
+        missing: "#7a7a7a",
+        link: "#a8a8a8",
+        label: "#ffffff",
+        labelStroke: "#111111",
+        nodeStroke: "#ffffff",
+        nodeStrokeWidth: 1.8,
+        linkOpacity: 0.9,
+        infoFill: "#ffffff",
+        infoStroke: "#111111",
+        infoText: "#111111"
+      };
+}
+
+/* Toast */
+function showToast(message, success=true){
+  const toast = document.getElementById("toast");
+  toast.innerText = message;
+  toast.style.background = success ? getCssVar("--toast-success") : getCssVar("--toast-error");
+  toast.style.color = getCssVar("--accent-contrast");
+  toast.classList.add("show");
+  setTimeout(()=>toast.classList.remove("show"),3000);
+}
+
+/* Modal */
+function openModal(message, callback){
+  modalMessage.innerText = message;
+  modalOverlay.style.display = "block";
+  modalCallback = callback;
+}
+function closeModal(){ modalOverlay.style.display = "none"; }
+function confirmAction(){ if(modalCallback) modalCallback(); closeModal(); }
+
+/* Accordion */
+function toggleAccordion(btn){
+  btn.nextElementSibling.classList.toggle("active");
+}
+function clearFields(ids){
+  ids.forEach(id=>{
+    const el = document.getElementById(id);
+    if(el) el.value = "";
+  });
+}
+/* Dashboard */
+async function analyze(){
+
+  const u = user.value.trim();
+  const j = jobSelect.value;
+  if(aiUserId && u) aiUserId.value = u;
+
+  if(!u){
+    showToast("Enter a user ID", false);
+    return;
+  }
+
+  try{
+
+    /* CHECK USER */
+
+    const userCheck = await fetch(`${API}/users/${u}`);
+
+    if(userCheck.status !== 200){
+
+      showToast("User not found", false);
+
+      learningPath.innerHTML="";
+      skillGap.innerHTML="";
+      courses.innerHTML="";
+      progressBar.style.width="0%";
+      progressLabel.innerText="";
+
+      document.getElementById("userDisplay").innerText="";
+
+      return;
+    }
+
+    const userData = await userCheck.json();
+
+    /* DISPLAY USER NAME */
+
+    if(userData.length){
+      document.getElementById("userDisplay").innerText =
+        "User: " + userData[0].name;
+    }
+
+    /* FETCH ANALYTICS DATA */
+
+    const lp = await fetch(`${API}/learning-path/${j}`).then(r=>r.json());
+    const sg = await fetch(`${API}/skill-gap/${u}/${j}`).then(r=>r.json());
+    const cr = await fetch(`${API}/course-recommendations/${u}/${j}`).then(r=>r.json());
+    const progress = await fetch(`${API}/progress/${u}/${j}`).then(r=>r.json());
+
+    /* RENDER DASHBOARD */
+
+    renderLearningPath(lp);
+    renderSkillGap(sg);
+    renderCourses(cr);
+    renderProgress(progress);
+
+    /* UPDATE GRAPH */
+
+    renderGraph(j);
+
+    /* SCROLL TO GRAPH */
+
+    document.getElementById("graphSection")
+      .scrollIntoView({behavior:"smooth"});
+
+  }
+  catch(err){
+
+    console.error(err);
+    showToast("Analysis failed", false);
+
+  }
+
+}
+
+function renderLearningPath(data){
+  learningPath.innerHTML = "";
+
+  if(!data.length){
+    learningPath.innerHTML = `<div class="card">No structured roadmap found</div>`;
+    return;
+  }
+
+  data.forEach(i=>{
+    learningPath.innerHTML += 
+      `<div class="card">Step ${i.depth + 1}: <b>${i.skill}</b></div>`;
+  });
+}
+
+function renderSkillGap(data){
+  skillGap.innerHTML="";
+  if(!data.length){
+    skillGap.innerHTML=`<div class="card">All skills acquired</div>`;
+    return;
+  }
+  data.forEach(i=>{
+    skillGap.innerHTML+=`<div class="card">Missing: ${i.missing_skill}</div>`;
+  });
+}
+
+function renderCourses(data){
+  courses.innerHTML="";
+  if(!data.length){
+    courses.innerHTML=`<div class="card">No recommendations</div>`;
+    return;
+  }
+  data.forEach(i=>{
+    courses.innerHTML+=`<div class="card">${i.recommended_course} (${i.platform})</div>`;
+  });
+}
+
+function renderProgress(data){
+  progressBar.style.width = Math.min(data.progress_percent,100) + "%";
+  progressLabel.innerText =
+    `Progress: ${data.progress_percent}% (${data.matched}/${data.total_required})`;
+}
+
+/* Load Jobs */
+async function loadJobs(){
+
+  const res = await fetch(`${API}/jobroles`);
+
+  if(!res.ok){
+    showToast("Failed to load job roles", false);
+    return;
+  }
+
+  const jobs = await res.json();
+
+  jobSelect.innerHTML="";
+  if(aiTargetJob) aiTargetJob.innerHTML = "";
+
+  jobs.forEach(j=>{
+
+    const opt=document.createElement("option");
+
+    opt.value=j.title;
+    opt.textContent=j.title;
+
+    jobSelect.appendChild(opt);
+    if(aiTargetJob){
+      const aiOpt = document.createElement("option");
+      aiOpt.value = j.title;
+      aiOpt.textContent = j.title;
+      aiTargetJob.appendChild(aiOpt);
+    }
+
+  });
+
+}
+
+async function generateAIRoadmap(){
+  const userId = (aiUserId.value || user.value || "").trim();
+  const targetJob = aiTargetJob.value || jobSelect.value;
+  const weeks = parseInt(aiWeeks.value, 10) || 12;
+  const hours = parseInt(aiHours.value, 10) || 6;
+
+  if(!userId || !targetJob){
+    showToast("Provide user ID and target job", false);
+    return;
+  }
+
+  try{
+    const res = await fetch(`${API}/ai-roadmap`,{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({
+        user_id: userId,
+        target_job: targetJob,
+        weeks: weeks,
+        hours_per_week: hours
+      })
+    });
+
+    if(!res.ok){
+      const err = await res.json();
+      showToast(err.detail || "Failed to generate roadmap", false);
+      return;
+    }
+
+    const data = await res.json();
+    renderAIRoadmap(data);
+    showToast("AI roadmap generated");
+  }
+  catch(err){
+    console.error(err);
+    showToast("Failed to generate roadmap", false);
+  }
+}
+
+function renderAIRoadmap(data){
+  aiRoadmapOverview.innerHTML = `
+    <b>Target Role:</b> ${data.target_job}<br>
+    <b>Status:</b> ${data.overview.status}<br>
+    <b>Missing Skills:</b> ${data.overview.missing_skill_count || 0}<br>
+    <b>Plan:</b> ${data.overview.weeks_planned || 0} weeks, ${data.overview.hours_per_week || 0} hrs/week
+  `;
+
+  aiRoadmapList.innerHTML = "";
+  if(!data.roadmap || !data.roadmap.length){
+    aiRoadmapList.innerHTML = `<div class="card">No roadmap required. You're job-ready for this role.</div>`;
+    return;
+  }
+
+  data.roadmap.forEach(step=>{
+    const courseHtml = (step.courses || []).length
+      ? step.courses.map(c => `<span class="pill">${c.name} (${c.platform || "Platform"})</span>`).join("")
+      : `<span class="muted">No mapped courses</span>`;
+
+    aiRoadmapList.innerHTML += `
+      <div class="card">
+        <b>Week ${step.week}</b> - ${step.focus_skill}
+        <div class="muted">${step.phase} phase | Depth ${step.dependency_depth} | ${step.recommended_hours}h focus</div>
+        <div style="margin:8px 0;">${courseHtml}</div>
+        <div><b>Milestone:</b> ${step.milestone}</div>
+      </div>
+    `;
+  });
+}
+
+async function syncMarketIntelligence(){
+  const source = (marketSource && marketSource.value) ? marketSource.value : "all";
+  const maxPosts = parseInt((marketMaxPosts && marketMaxPosts.value) ? marketMaxPosts.value : "220", 10) || 220;
+  try{
+    const qs = new URLSearchParams({
+      source: source,
+      max_posts: String(maxPosts),
+      allow_fallback: "true"
+    });
+    const res = await fetch(`${API}/market/sync?${qs.toString()}`,{method:"POST"});
+    if(!res.ok){
+      const err = await res.json().catch(()=>({detail:"Market sync failed"}));
+      const msg = typeof err.detail === "string" ? err.detail : (err.detail?.message || "Market sync failed");
+      marketSyncStatus.innerText = msg;
+      showToast(msg, false);
+      return;
+    }
+
+    const data = await res.json();
+    const errorBadge = (data.source_errors || []).length
+      ? ` | Source errors: ${(data.source_errors || []).length}`
+      : "";
+    marketSyncStatus.innerText =
+      `Synced ${data.posts_synced} posts (${(data.sources_used || []).join(", ")}) at ${new Date(data.synced_at).toLocaleString()}${errorBadge}`;
+    showToast("Market feed synced");
+    loadMarketIntelligence();
+  }
+  catch(err){
+    console.error(err);
+    showToast("Market sync failed", false);
+  }
+}
+
+async function loadMarketIntelligence(){
+  try{
+    const res = await fetch(`${API}/market/intelligence`);
+    if(!res.ok){
+      showToast("Failed to load market trends", false);
+      return;
+    }
+    const data = await res.json();
+    renderMarketMeta(data);
+    renderMarketTrends(data.top_trending_skills || []);
+  }
+  catch(err){
+    console.error(err);
+    showToast("Failed to load market trends", false);
+  }
+}
+
+function renderMarketMeta(data){
+  const breakdown = (data.source_breakdown || []).length
+    ? data.source_breakdown.map(s => `<span class="pill">${s.source}: ${s.posts}</span>`).join("")
+    : `<span class="muted">No source breakdown yet</span>`;
+
+  const synced = data.last_synced_at ? new Date(data.last_synced_at).toLocaleString() : "Not synced yet";
+  marketMeta.innerHTML = `
+    <div class="card">
+      <b>Total Posts:</b> ${data.total_posts || 0}<br>
+      <b>Active Sources:</b> ${data.source_count || 0}<br>
+      <b>Last Sync:</b> ${synced}<br><br>
+      <b>Source Breakdown</b><br>
+      <div style="margin-top:8px;">${breakdown}</div>
+    </div>
+  `;
+}
+
+function renderMarketTrends(trends){
+  marketTrends.innerHTML = "";
+  if(!trends.length){
+    marketTrends.innerHTML = `<div class="card">No trend data available. Sync market feed first.</div>`;
+    return;
+  }
+
+  trends.forEach(t=>{
+    marketTrends.innerHTML += `
+      <div class="card">
+        <b>${t.skill}</b><br>
+        Demand: ${t.demand_count} jobs<br>
+        Sources: ${t.source_count || 0}<br>
+        Course Supply: ${t.course_count}<br>
+        Scarcity Index: ${t.scarcity_index}<br>
+        Confidence: ${t.confidence ?? 0}
+      </div>
+    `;
+  });
+}
+
+async function analyzeUserMarketFit(){
+  const u = (aiUserId.value || user.value || "").trim();
+  if(!u){
+    showToast("Enter a user ID first", false);
+    return;
+  }
+
+  try{
+    const res = await fetch(`${API}/market/intelligence/${u}`);
+    if(!res.ok){
+      const err = await res.json();
+      showToast(err.detail || "Failed to analyze market fit", false);
+      return;
+    }
+    const data = await res.json();
+    renderUserMarketFit(data);
+  }
+  catch(err){
+    console.error(err);
+    showToast("Failed to analyze market fit", false);
+  }
+}
+
+function renderUserMarketFit(data){
+  const gaps = data.priority_gap_skills || [];
+  let gapHtml = gaps.length
+    ? gaps.map(g => `<span class="pill">${g.skill} (${g.demand_count})</span>`).join("")
+    : "No major trending gaps";
+
+  marketUserFit.innerHTML = `
+    <div class="card">
+      <b>Market Fit Score:</b> ${data.market_fit_percent}%<br>
+      <b>Owned Trending Skills:</b> ${data.owned_trending_skills}<br><br>
+      <b>Analyzed Skills:</b> ${data.analysis_scope || 0}<br><br>
+      <b>Priority Gap Skills</b><br>
+      <div style="margin-top:8px;">${gapHtml}</div>
+    </div>
+  `;
+}
+
+/* ===== ADMIN FUNCTIONS (MISSING BLOCK) ===== */
+
+async function createUser(btn){
+  btn.classList.add("loading");
+  btn.innerText = "Creating...";
+
+  try{
+    const res = await fetch(`${API}/users`,{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({
+        user_id:newUserId.value,
+        name:newUserName.value,
+        level:newUserLevel.value
+      })
+    });
+
+    if(!res.ok){
+      throw new Error("User creation failed");
+    }
+
+    clearFields(["newUserId","newUserName"]);
+    newUserLevel.selectedIndex = 0;
+
+    showToast("User created");
+    loadUsers(); // refresh delete dropdown
+    loadPrerequisiteDropdowns();
+
+    btn.closest(".accordion-content").classList.remove("active"); // auto collapse
+  }
+  catch(err){
+    showToast("Error creating user", false);
+  }
+  finally{
+    btn.classList.remove("loading");
+    btn.innerText = "Create";
+  }
+}
+
+async function createSkill(btn){
+  btn.classList.add("loading");
+  btn.innerText = "Creating...";
+
+  try{
+    const res = await fetch(`${API}/skills`,{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({
+        name:newSkillName.value,
+        category:newSkillCategory.value,
+        level:newSkillLevel.value
+      })
+    });
+
+    if(!res.ok){
+      throw new Error("Skill creation failed");
+    }
+
+    clearFields(["newSkillName","newSkillCategory"]);
+    newSkillLevel.selectedIndex = 0;
+
+    showToast("Skill created");
+    loadSkills(); // refresh delete dropdown
+    loadPrerequisiteDropdowns();
+
+    btn.closest(".accordion-content").classList.remove("active");
+  }
+  catch(err){
+    showToast("Error creating skill", false);
+  }
+  finally{
+    btn.classList.remove("loading");
+    btn.innerText = "Create";
+  }
+}
+
+async function createJob(btn){
+  btn.classList.add("loading");
+  btn.innerText="Creating...";
+
+  try{
+    const res = await fetch(`${API}/jobroles`,{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({
+        title:newJobTitle.value,
+        domain:newJobDomain.value,
+        experience_level:newJobLevel.value
+      })
+    });
+
+    if(!res.ok){
+      throw new Error("Job creation failed");
+    }
+
+    clearFields(["newJobTitle","newJobDomain"]);
+    newJobLevel.selectedIndex = 0;
+
+    showToast("Job created");
+    loadJobRoles();
+    loadJobs();
+    loadPrerequisiteDropdowns();
+
+    btn.closest(".accordion-content").classList.remove("active");
+  }
+  catch(err){
+    showToast("Error creating job", false);
+  }
+  finally{
+    btn.classList.remove("loading");
+    btn.innerText="Create";
+  }
+}
+
+async function createCourse(btn){
+
+  btn.classList.add("loading");
+  btn.innerText="Creating...";
+
+  try{
+
+    const res = await fetch(`${API}/courses`,{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({
+        name:newCourseName.value,
+        platform:newCoursePlatform.value,
+        difficulty:newCourseDifficulty.value,
+        duration_hours:parseInt(newCourseDuration.value),
+        skill_name:newCourseSkill.value
+      })
+    });
+
+    if(!res.ok){
+      throw new Error("Course creation failed");
+    }
+
+    clearFields([
+      "newCourseName",
+      "newCoursePlatform",
+      "newCourseDifficulty",
+      "newCourseDuration"
+    ]);
+
+    newCourseSkill.selectedIndex = 0;
+
+    showToast("Course created successfully");
+
+    loadCourses();
+    loadPrerequisiteDropdowns();
+
+    btn.closest(".accordion-content").classList.remove("active");
+
+  }
+  catch(err){
+    showToast("Error creating course",false);
+  }
+  finally{
+    btn.classList.remove("loading");
+    btn.innerText="Create";
+  }
+}
+
+async function assignSkillToUser(btn){
+  btn.classList.add("loading");
+  btn.innerText="Assigning...";
+
+  try{
+    const res = await fetch(`${API}/users/add-skill`,{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({
+        user_id:assignUserId.value,
+        skill_name:assignSkillName.value,
+        proficiency:parseInt(assignProficiency.value)
+      })
+    });
+
+    if(!res.ok){
+      throw new Error("Assignment failed");
+    }
+
+    clearFields(["assignUserId","assignSkillName","assignProficiency"]);
+    showToast("Skill assigned");
+
+    if(user.value && jobSelect.value){
+      analyze();
+    }
+  }
+  catch(err){
+    showToast("Error assigning skill", false);
+  }
+  finally{
+    btn.classList.remove("loading");
+    btn.innerText="Assign";
+  }
+}
+
+
+function deleteUser(){
+  const selected = deleteUserSelect.value;
+
+  if(!selected){
+    showToast("No user selected", false);
+    return;
+  }
+
+  openModal(`Delete user "${selected}"?`, async ()=>{
+    await fetch(`${API}/users/${selected}`,{method:"DELETE"});
+    showToast("User deleted");
+    loadUsers();
+  });
+}
+
+function deleteSkill(){
+  const selected = deleteSkillSelect.value;
+
+  if(!selected){
+    showToast("No skill selected", false);
+    return;
+  }
+
+  openModal(`Delete skill "${selected}"?`, async ()=>{
+    await fetch(`${API}/skills/${selected}`,{method:"DELETE"});
+    showToast("Skill deleted");
+    loadSkills();
+  });
+}
+
+function deleteJob(){
+  const selected = deleteJobSelect.value;
+
+  if(!selected){
+    showToast("No job selected", false);
+    return;
+  }
+
+  openModal(`Delete job "${selected}"?`, async ()=>{
+    await fetch(`${API}/jobroles/${selected}`,{method:"DELETE"});
+    showToast("Job deleted");
+    loadJobRoles();
+    loadJobs(); // refresh dashboard dropdown
+  });
+}
+
+function deleteCourse(){
+  const selected = deleteCourseSelect.value;
+
+  if(!selected){
+    showToast("No course selected", false);
+    return;
+  }
+
+  openModal(`Delete course "${selected}"?`, async ()=>{
+    await fetch(`${API}/courses/${selected}`, {method:"DELETE"});
+    showToast("Course deleted");
+
+    loadCourses(); // refresh dropdown
+  });
+}
+
+async function loadCourses(){
+  const res = await fetch(`${API}/courses`);
+  const courses = await res.json();
+
+  deleteCourseSelect.innerHTML = "";
+
+  courses.forEach(c=>{
+    const opt = document.createElement("option");
+    opt.value = c.name;
+    opt.textContent = c.name;
+    deleteCourseSelect.appendChild(opt);
+  });
+}
+async function loadUsers(){
+  const res = await fetch(`${API}/users`);
+  const users = await res.json();
+
+  deleteUserSelect.innerHTML = "";
+
+  users.forEach(u=>{
+    const opt = document.createElement("option");
+    opt.value = u.user_id;
+    opt.textContent = u.user_id;
+    deleteUserSelect.appendChild(opt);
+  });
+}
+
+async function loadSkills(){
+  const res = await fetch(`${API}/skills`);
+  const skills = await res.json();
+
+  deleteSkillSelect.innerHTML = "";
+
+  skills.forEach(s=>{
+    const opt = document.createElement("option");
+    opt.value = s.name;
+    opt.textContent = s.name;
+    deleteSkillSelect.appendChild(opt);
+  });
+}
+
+async function loadJobRoles(){
+  const res = await fetch(`${API}/jobroles`);
+  const jobs = await res.json();
+
+  deleteJobSelect.innerHTML = "";
+
+  jobs.forEach(j=>{
+    const opt = document.createElement("option");
+    opt.value = j.title;
+    opt.textContent = j.title;
+    deleteJobSelect.appendChild(opt);
+  });
+}
+
+function validateUserForm(){
+  const valid =
+    newUserId.value.trim() !== "" &&
+    newUserName.value.trim() !== "" &&
+    newUserLevel.value !== "";
+
+  createUserBtn.disabled = !valid;
+}
+
+function validateSkillForm(){
+  const valid =
+    newSkillName.value.trim() !== "" &&
+    newSkillCategory.value.trim() !== "" &&
+    newSkillLevel.value !== "";
+
+  createSkillBtn.disabled = !valid;
+}
+
+function validateCourseForm(){
+  const valid =
+    newCourseName.value.trim() !== "" &&
+    newCoursePlatform.value.trim() !== "" &&
+    newCourseDifficulty.value.trim() !== "" &&
+    newCourseSkill.value.trim() !== "" &&
+    newCourseDuration.value.trim() !== "";
+
+  createCourseBtn.disabled = !valid;
+}
+
+async function loadPrerequisiteDropdowns(){
+
+  const skills = await fetch(`${API}/skills`).then(r=>r.json());
+  const jobs = await fetch(`${API}/jobroles`).then(r=>r.json());
+  const courses = await fetch(`${API}/courses`).then(r=>r.json());
+
+  // Skill dropdowns
+  [prereqSkillSelect, targetSkillSelect, removePrereqSelect, removeTargetSelect,
+   jobSkillSelect, removeJobSkillSelect, newCourseSkill]
+   .forEach(select=>{
+      if(!select) return;
+      select.innerHTML="";
+      skills.forEach(s=>{
+        const opt = document.createElement("option");
+        opt.value = s.name;
+        opt.textContent = s.name;
+        select.appendChild(opt);
+      });
+   });
+
+  // Job dropdowns
+  [jobSelectRel, removeJobSelect].forEach(select=>{
+      if(!select) return;
+      select.innerHTML="";
+      jobs.forEach(j=>{
+        const opt = document.createElement("option");
+        opt.value = j.title;
+        opt.textContent = j.title;
+        select.appendChild(opt);
+      });
+  });
+
+}
+
+async function addPrerequisite(){
+
+  const a = prereqSkillSelect.value;
+  const b = targetSkillSelect.value;
+
+  if(a === b){
+    showToast("A skill cannot depend on itself", false);
+    return;
+  }
+
+  const res = await fetch(`${API}/skills/${a}/prerequisites`);
+  const existing = await res.json();
+
+  if(existing.some(p => p.prerequisite === b)){
+    showToast("Circular dependency detected", false);
+    return;
+  }
+
+  await fetch(`${API}/skills/add-prerequisite`,{
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({
+      prerequisite:a,
+      target_skill:b
+    })
+  });
+
+  showToast("Prerequisite added");
+  loadPrerequisiteDropdowns();
+}
+
+async function removePrerequisite(){
+
+  const a = removePrereqSelect.value;
+  const b = removeTargetSelect.value;
+
+  const check = await fetch(`${API}/skills/${b}/prerequisites`);
+  const data = await check.json();
+
+  if(!data.some(p => p.prerequisite === a)){
+    showToast("This prerequisite relationship does not exist", false);
+    return;
+  }
+
+  const res = await fetch(`${API}/skills/remove-prerequisite`,{
+    method:"DELETE",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({
+      prerequisite: a,
+      target_skill: b
+    })
+  });
+
+  if(res.ok){
+    showToast("Prerequisite removed");
+    loadPrerequisiteDropdowns();
+  }
+}
+
+async function addSkillToJob(){
+  await fetch(`${API}/jobroles/add-skill`,{
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({
+      job_title: jobSelectRel.value,
+      skill_name: jobSkillSelect.value
+    })
+  });
+
+  showToast("Skill added to job");
+  loadPrerequisiteDropdowns();
+}
+
+async function removeSkillFromJob(){
+  await fetch(`${API}/jobroles/remove-skill`,{
+    method:"DELETE",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({
+      job_title: removeJobSelect.value,
+      skill_name: removeJobSkillSelect.value
+    })
+  });
+
+  showToast("Skill removed from job");
+  loadPrerequisiteDropdowns();
+}
+
+async function recommendCareers(){
+
+  const u = user.value.trim();
+
+  if(!u){
+    showToast("Enter a user ID first", false);
+    return;
+  }
+
+  try{
+
+    const res = await fetch(`${API}/career-recommendations/${u}`);
+
+    if(!res.ok){
+      showToast("Failed to fetch recommendations", false);
+      return;
+    }
+
+    const data = await res.json();
+
+    const container = document.getElementById("careerRecommendations");
+    container.innerHTML = "";
+
+    if(!data.length){
+      container.innerHTML = `<div class="card">No recommendations found</div>`;
+      return;
+    }
+
+    data.forEach(j => {
+
+      container.innerHTML += `
+        <div class="card">
+          <b>${j.job}</b><br>
+          Skill Match: ${j.match_percent}% 
+          (${j.matched}/${j.total_required})
+        </div>
+      `;
+
+    });
+
+  }
+  catch(err){
+
+    console.error(err);
+    showToast("Failed to get recommendations", false);
+
+  }
+
+}
+
+async function careerAdvisor(){
+
+  const u = user.value.trim();
+
+  if(!u){
+    showToast("Enter a user ID", false);
+    return;
+  }
+
+  try{
+
+    const res = await fetch(`${API}/career-transition/${u}`);
+    const data = await res.json();
+
+    const container = document.getElementById("careerResults");
+    container.innerHTML = "";
+
+    if(!data.length){
+      container.innerHTML = `<div class="card">No career recommendations available</div>`;
+      return;
+    }
+
+    data.forEach(j => {
+
+      const skills =
+        j.missing_skills && j.missing_skills.length
+        ? j.missing_skills.join(", ")
+        : "None";
+
+      const courses =
+        j.recommended_courses && j.recommended_courses.length
+        ? j.recommended_courses.join(", ")
+        : "None";
+
+      container.innerHTML += `
+        <div class="card">
+
+          <b>${j.job}</b><br>
+          Match: ${j.match_percent}% 
+          (${j.matched_count}/${j.total_required})
+
+          <br><br>
+
+          <b>Missing Skills</b><br>
+          ${skills}
+
+          <br><br>
+
+          <b>Recommended Courses</b><br>
+          ${courses}
+
+          <br><br>
+
+          <button onclick="showCareerGraph('${j.job}')">
+            View Transition Path
+          </button>
+
+        </div>
+      `;
+
+    });
+
+  }
+  catch(err){
+    console.error(err);
+    showToast("Failed to get career recommendations", false);
+  }
+
+}
+
+function validateJobForm(){
+  const valid =
+    newJobTitle.value.trim() !== "" &&
+    newJobDomain.value.trim() !== "" &&
+    newJobLevel.value !== "";
+
+  createJobBtn.disabled = !valid;
+}
+
+async function renderGraph(job){
+
+  const data = await fetch(`${API}/graph/${job}`).then(r=>r.json());
+
+  const nodesMap = {};
+  const links = [];
+
+  nodesMap[job] = { id: job, group: "job" };
+
+  data.forEach(row => {
+
+    if(row.skill){
+      if(!nodesMap[row.skill]){
+        nodesMap[row.skill] = { id: row.skill, group: "skill" };
+      }
+
+      if(row.job){
+        links.push({
+          source: row.job,
+          target: row.skill,
+          type: "requires"
+        });
+      }
+    }
+
+    if(row.prerequisite && row.skill){
+      if(!nodesMap[row.prerequisite]){
+        nodesMap[row.prerequisite] = { id: row.prerequisite, group: "prereq" };
+      }
+
+      links.push({
+        source: row.prerequisite,
+        target: row.skill,
+        type: "prerequisite"
+      });
+    }
+
+    if(row.course && row.skill){
+      if(!nodesMap[row.course]){
+        nodesMap[row.course] = { id: row.course, group: "course" };
+      }
+
+      links.push({
+        source: row.course,
+        target: row.skill,
+        type: "teaches"
+      });
+    }
+
+  });
+
+  const nodes = Object.values(nodesMap);
+  const palette = getGraphPalette();
+  latestGraphState = { type: "job", job, nodes: null, links: null };
+
+  d3.select("#graph").html("");
+
+  const width = document.getElementById("graph").clientWidth;
+  const height = 500;
+
+  const svg = d3.select("#graph")
+    .append("svg")
+    .attr("width", width)
+    .attr("height", height);
+
+  const container = svg.append("g");
+
+  /* PAN + ZOOM */
+
+  svg.call(
+    d3.zoom().on("zoom",(event)=>{
+      container.attr("transform",event.transform);
+    })
+  );
+
+  const simulation = d3.forceSimulation(nodes)
+    .force("link", d3.forceLink(links)
+      .id(d=>d.id)
+      .distance(130))
+    .force("charge", d3.forceManyBody().strength(-450))
+    .force("center", d3.forceCenter(width/2,height/2))
+    .force("collision", d3.forceCollide().radius(34));
+
+  const colors = {
+    job: palette.job,
+    skill: palette.skill,
+    prereq: palette.prereq,
+    course: palette.course
+  };
+
+  const link = container.append("g")
+    .selectAll("line")
+    .data(links)
+    .enter()
+    .append("line")
+    .attr("stroke-width",2.4)
+    .attr("stroke",palette.link)
+    .attr("stroke-opacity",palette.linkOpacity);
+
+  const node = container.append("g")
+    .selectAll("circle")
+    .data(nodes)
+    .enter()
+    .append("circle")
+    .attr("r",24)
+    .attr("fill",d=>colors[d.group] || "#999")
+    .attr("stroke",palette.nodeStroke)
+    .attr("stroke-width",palette.nodeStrokeWidth)
+    .call(d3.drag()
+      .on("start",dragstarted)
+      .on("drag",dragged)
+      .on("end",dragended));
+
+  const label = container.append("g")
+    .selectAll("text")
+    .data(nodes)
+    .enter()
+    .append("text")
+    .text(d=>d.id)
+    .attr("font-size","13px")
+    .attr("font-weight","700")
+    .attr("fill",palette.label)
+    .attr("stroke",palette.labelStroke)
+    .attr("stroke-width",2.5)
+    .style("paint-order","stroke")
+    .attr("text-anchor","middle")
+    .style("pointer-events","none");
+
+  /* INFO BOX */
+
+  const infoBox = container.append("g")
+    .style("display","none");
+
+  const infoRect = infoBox.append("rect")
+    .attr("rx",10)
+    .attr("fill",palette.infoFill)
+    .attr("stroke",palette.infoStroke)
+    .attr("stroke-width",2)
+    .attr("opacity",0.95);
+
+  const infoText = infoBox.append("text")
+    .attr("font-size","13px")
+    .attr("fill",palette.infoText)
+    .attr("x",10)
+    .attr("y",20);
+
+  node.on("click",(event,d)=>{
+
+    event.stopPropagation();
+
+    let typeLabel = "";
+
+    if(d.group === "job") typeLabel = "JOB ROLE";
+    if(d.group === "skill") typeLabel = "SKILL";
+    if(d.group === "course") typeLabel = "COURSE";
+    if(d.group === "prereq") typeLabel = "PREREQUISITE";
+
+    const text = `${d.id} (${typeLabel})`;
+
+    infoText.text(text);
+
+    /* calculate text width */
+
+    const bbox = infoText.node().getBBox();
+
+    const padding = 20;
+    const boxWidth = bbox.width + padding;
+    const boxHeight = bbox.height + 15;
+
+    infoRect
+      .attr("width", boxWidth)
+      .attr("height", boxHeight);
+
+    /* position box */
+
+    let x = d.x + 30;
+    let y = d.y - 20;
+
+    if(x + boxWidth > width){
+      x = d.x - boxWidth - 30;
+    }
+
+    if(y < 0){
+      y = d.y + 30;
+    }
+
+    infoBox
+      .attr("transform",`translate(${x},${y})`)
+      .style("display","block");
+
+    /* highlight relations */
+
+    link.style("stroke-opacity",l =>
+      l.source.id === d.id || l.target.id === d.id ? 1 : 0.1
+    );
+
+    node.style("opacity",n =>
+      links.some(l =>
+        l.source.id === d.id && l.target.id === n.id ||
+        l.target.id === d.id && l.source.id === n.id
+      ) || n.id === d.id ? 1 : 0.2
+    );
+
+  });
+
+  svg.on("click",function(){
+
+    node.style("opacity",1);
+    link.style("stroke-opacity",1);
+
+    infoBox.style("display","none");
+
+  });
+
+  simulation.on("tick",()=>{
+
+    link
+      .attr("x1",d=>d.source.x)
+      .attr("y1",d=>d.source.y)
+      .attr("x2",d=>d.target.x)
+      .attr("y2",d=>d.target.y);
+
+    node
+      .attr("cx",d=>d.x)
+      .attr("cy",d=>d.y);
+
+    label
+      .attr("x",d=>d.x)
+      .attr("y",d=>d.y+5);
+  });
+
+  function dragstarted(event){
+    if(!event.active) simulation.alphaTarget(0.3).restart();
+    event.subject.fx = event.subject.x;
+    event.subject.fy = event.subject.y;
+  }
+
+  function dragged(event){
+    event.subject.fx = event.x;
+    event.subject.fy = event.y;
+  }
+
+  function dragended(event){
+    if(!event.active) simulation.alphaTarget(0);
+    event.subject.fx = null;
+    event.subject.fy = null;
+  }
+
+}
+
+async function showCareerGraph(job){
+
+  const u = user.value.trim();
+
+  const data = await fetch(`${API}/career-graph/${u}/${job}`)
+    .then(r => r.json());
+
+  if(!data.length){
+    showToast("Graph data not found", false);
+    return;
+  }
+
+  const row = data[0];
+
+  const nodes = [];
+  const links = [];
+
+  const addNode = (id, group)=>{
+    if(!nodes.some(n=>n.id===id)){
+      nodes.push({id, group});
+    }
+  };
+
+  addNode(row.user,"user");
+  addNode(row.job,"job");
+
+  row.matched_skills.forEach(s => {
+
+    addNode(s,"skill");
+
+    links.push({
+      source: row.user,
+      target: s
+    });
+
+    links.push({
+      source: s,
+      target: row.job
+    });
+
+  });
+
+  row.missing_skills.forEach(s => {
+
+    addNode(s,"missing");
+
+    links.push({
+      source: s,
+      target: row.job
+    });
+
+  });
+
+  row.courses.forEach(c => {
+
+    addNode(c,"course");
+
+    row.missing_skills.forEach(ms => {
+
+      links.push({
+        source: c,
+        target: ms
+      });
+
+    });
+
+  });
+
+  latestGraphState = {
+    type: "career",
+    job: null,
+    nodes: JSON.parse(JSON.stringify(nodes)),
+    links: JSON.parse(JSON.stringify(links))
+  };
+  renderCustomGraph(nodes, links);
+
+  document.getElementById("graphSection")
+    .scrollIntoView({ behavior: "smooth" });
+
+}
+
+function renderCustomGraph(nodes, links){
+
+  d3.select("#graph").html("");
+  const palette = getGraphPalette();
+
+  const width = document.getElementById("graph").clientWidth;
+  const height = 500;
+
+  const svg = d3.select("#graph")
+    .append("svg")
+    .attr("width", width)
+    .attr("height", height);
+
+  const container = svg.append("g");
+
+  /* PAN + ZOOM */
+
+  svg.call(
+    d3.zoom().on("zoom",(event)=>{
+      container.attr("transform",event.transform);
+    })
+  );
+
+  /* LAYERED POSITIONING */
+
+  const layers = {
+    user: 60,
+    skill: 160,
+    job: 260,
+    missing: 360,
+    course: 460
+  };
+
+  nodes.forEach((n,i)=>{
+    n.x = width/2 + (Math.random()*100-50);
+    n.y = layers[n.group] || 200;
+  });
+
+  const simulation = d3.forceSimulation(nodes)
+    .force("link", d3.forceLink(links)
+      .id(d=>d.id)
+      .distance(120))
+    .force("charge", d3.forceManyBody().strength(-200))
+    .force("x", d3.forceX(d=>width/2).strength(0.3))
+    .force("y", d3.forceY(d=>layers[d.group]).strength(1))
+    .force("collision", d3.forceCollide().radius(40));
+
+  const colors = {
+    user: palette.user,
+    job: palette.job,
+    skill: palette.skill,
+    missing: palette.missing,
+    course: palette.course
+  };
+
+  const link = container.append("g")
+    .selectAll("line")
+    .data(links)
+    .enter()
+    .append("line")
+    .attr("stroke-width",2.4)
+    .attr("stroke",palette.link)
+    .attr("stroke-opacity",palette.linkOpacity);
+
+  const node = container.append("g")
+    .selectAll("circle")
+    .data(nodes)
+    .enter()
+    .append("circle")
+    .attr("r",24)
+    .attr("fill",d=>colors[d.group] || "#999")
+    .attr("stroke",palette.nodeStroke)
+    .attr("stroke-width",palette.nodeStrokeWidth)
+    .call(d3.drag()
+      .on("start",dragstarted)
+      .on("drag",dragged)
+      .on("end",dragended));
+
+  const label = container.append("g")
+    .selectAll("text")
+    .data(nodes)
+    .enter()
+    .append("text")
+    .text(d=>d.id)
+    .attr("font-size","13px")
+    .attr("font-weight","700")
+    .attr("fill",palette.label)
+    .attr("stroke",palette.labelStroke)
+    .attr("stroke-width",2.5)
+    .style("paint-order","stroke")
+    .attr("text-anchor","middle")
+    .style("pointer-events","none");
+
+  /* INFO BOX */
+
+  const infoBox = container.append("g")
+    .style("display","none");
+
+  const infoRect = infoBox.append("rect")
+    .attr("rx",10)
+    .attr("fill",palette.infoFill)
+    .attr("stroke",palette.infoStroke)
+    .attr("stroke-width",2)
+    .attr("opacity",0.95);
+
+  const infoText = infoBox.append("text")
+    .attr("font-size","13px")
+    .attr("fill",palette.infoText)
+    .attr("x",10)
+    .attr("y",20);
+
+  node.on("click",(event,d)=>{
+
+    event.stopPropagation();
+
+    let typeLabel = "";
+
+    if(d.group === "user") typeLabel = "USER";
+    if(d.group === "skill") typeLabel = "CURRENT SKILL";
+    if(d.group === "job") typeLabel = "TARGET JOB";
+    if(d.group === "missing") typeLabel = "MISSING SKILL";
+    if(d.group === "course") typeLabel = "RECOMMENDED COURSE";
+
+    const text = `${d.id} (${typeLabel})`;
+
+    infoText.text(text);
+
+    const bbox = infoText.node().getBBox();
+
+    const padding = 20;
+    const boxWidth = bbox.width + padding;
+    const boxHeight = bbox.height + 15;
+
+    infoRect
+      .attr("width", boxWidth)
+      .attr("height", boxHeight);
+
+    let x = d.x + 30;
+    let y = d.y - 20;
+
+    if(x + boxWidth > width){
+      x = d.x - boxWidth - 30;
+    }
+
+    if(y < 0){
+      y = d.y + 30;
+    }
+
+    infoBox
+      .attr("transform",`translate(${x},${y})`)
+      .style("display","block");
+
+    /* highlight relationships */
+
+    link.style("stroke-opacity",l =>
+      l.source.id === d.id || l.target.id === d.id ? 1 : 0.1
+    );
+
+    node.style("opacity",n =>
+      links.some(l =>
+        l.source.id === d.id && l.target.id === n.id ||
+        l.target.id === d.id && l.source.id === n.id
+      ) || n.id === d.id ? 1 : 0.2
+    );
+
+  });
+
+  svg.on("click",function(){
+
+    node.style("opacity",1);
+    link.style("stroke-opacity",1);
+    infoBox.style("display","none");
+
+  });
+
+  simulation.on("tick",()=>{
+
+    link
+      .attr("x1",d=>d.source.x)
+      .attr("y1",d=>d.source.y)
+      .attr("x2",d=>d.target.x)
+      .attr("y2",d=>d.target.y);
+
+    node
+      .attr("cx",d=>d.x)
+      .attr("cy",d=>d.y);
+
+    label
+      .attr("x",d=>d.x)
+      .attr("y",d=>d.y+5);
+
+  });
+
+  function dragstarted(event){
+    if(!event.active) simulation.alphaTarget(0.3).restart();
+    event.subject.fx = event.subject.x;
+    event.subject.fy = event.subject.y;
+  }
+
+  function dragged(event){
+    event.subject.fx = event.x;
+    event.subject.fy = event.y;
+  }
+
+  function dragended(event){
+    if(!event.active) simulation.alphaTarget(0);
+    event.subject.fx = null;
+    event.subject.fy = null;
+  }
+
+}
+
+
+window.onload = ()=>{
+  initTheme();
+  loadJobs();
+  loadMarketIntelligence();
+  loadCourses();
+  loadUsers();
+  loadSkills();
+  loadJobRoles();
+  loadPrerequisiteDropdowns();
+};
+
+</script>
+</body>
+</html>
